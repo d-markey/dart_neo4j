@@ -1,16 +1,16 @@
 /// Utilities for reading and processing Neo4j OGM annotations.
 library;
 
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:source_gen/source_gen.dart';
 
 /// Utility class for extracting annotation data from class elements.
 class AnnotationReader {
   /// Extracts the label from a @cypherNode annotation.
   /// Returns the annotation label or the class name if no label is specified.
-  static String extractLabel(ClassElement2 element, ConstantReader annotation) {
+  static String extractLabel(ClassElement element, ConstantReader annotation) {
     final labelValue = annotation.peek('label')?.stringValue;
-    return labelValue ?? element.name3 ?? 'UnknownClass';
+    return labelValue ?? element.name ?? 'UnknownClass';
   }
 
   /// Extracts the includeFromNode flag from a @cypherNode annotation.
@@ -20,7 +20,7 @@ class AnnotationReader {
   }
 
   /// Checks if a field element has a @CypherProperty annotation.
-  static bool hasCypherPropertyAnnotation(FieldElement2 field) {
+  static bool hasCypherPropertyAnnotation(FieldElement field) {
     const cypherPropertyChecker = TypeChecker.fromUrl(
       'package:dart_neo4j_ogm/src/annotations/cypher_property.dart#CypherProperty',
     );
@@ -28,7 +28,7 @@ class AnnotationReader {
   }
 
   /// Extracts CypherProperty annotation data from a field.
-  static Map<String, dynamic> extractCypherPropertyData(FieldElement2 field) {
+  static Map<String, dynamic> extractCypherPropertyData(FieldElement field) {
     const cypherPropertyChecker = TypeChecker.fromUrl(
       'package:dart_neo4j_ogm/src/annotations/cypher_property.dart#CypherProperty',
     );
@@ -47,11 +47,11 @@ class AnnotationReader {
 
   /// Processes all fields in a class, handling both regular and Freezed classes.
   /// Returns a list of field elements that should be processed for Cypher generation.
-  static List<FieldElement2> getProcessableFields(ClassElement2 element) {
+  static List<FieldElement> getProcessableFields(ClassElement element) {
     // Get fields directly from the class
     // This works for both regular classes and Freezed classes
     // as Freezed generates the fields on the class itself
-    final fields = element.fields2;
+    final fields = element.fields;
 
     // Remove synthetic and static fields
     final processableFields = fields
@@ -59,7 +59,7 @@ class AnnotationReader {
           (field) =>
               !field.isSynthetic &&
               !field.isStatic &&
-              !(field.name3?.startsWith('_') ?? false),
+              !(field.name?.startsWith('_') ?? false),
         )
         .toList();
 
@@ -68,7 +68,7 @@ class AnnotationReader {
     // runs before Freezed has generated all the fields.
     if (processableFields.isEmpty) {
       // Look for factory constructors (typical in Freezed classes)
-      final constructors = element.constructors2;
+      final constructors = element.constructors;
       for (final constructor in constructors) {
         if (constructor.isFactory) {
           // This is likely a Freezed factory constructor
@@ -83,14 +83,14 @@ class AnnotationReader {
 
   /// Extracts the Cypher property name for a field.
   /// Uses custom name from @CypherProperty annotation or falls back to field name.
-  static String getCypherPropertyName(FieldElement2 field) {
+  static String getCypherPropertyName(FieldElement field) {
     final annotationData = extractCypherPropertyData(field);
     final customName = annotationData['name'] as String?;
-    return customName ?? field.name3 ?? 'unknownField';
+    return customName ?? field.name ?? 'unknownField';
   }
 
   /// Checks if a field should be ignored in Cypher generation.
-  static bool isFieldIgnored(FieldElement2 field) {
+  static bool isFieldIgnored(FieldElement field) {
     final annotationData = extractCypherPropertyData(field);
     return annotationData['ignore'] as bool;
   }
@@ -119,16 +119,16 @@ class AnnotationReader {
   /// Gets field information from constructor parameters for Freezed classes.
   /// This is a fallback when fields are not yet available on the class.
   static List<Map<String, dynamic>> getFieldInfoFromConstructor(
-    ClassElement2 element,
+    ClassElement element,
   ) {
     final fieldInfo = <Map<String, dynamic>>[];
 
     // Look for factory constructors (typical in Freezed classes)
-    final constructors = element.constructors2;
+    final constructors = element.constructors;
     for (final constructor in constructors) {
       if (constructor.isFactory) {
         for (final parameter in constructor.formalParameters) {
-          final paramName = parameter.name3 ?? 'unknownParam';
+          final paramName = parameter.name ?? 'unknownParam';
           final paramType = parameter.type.getDisplayString();
           final annotationData = extractCypherPropertyDataFromParameter(
             parameter,

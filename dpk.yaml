@@ -5,6 +5,11 @@ catalog:
   environment:
     sdk: ^3.8.0
 
+  dependencies:
+    analyzer: ^8.0.0
+    build: ^4.0.0
+    source_gen: ^4.0.0
+
 scripts:
   prebuild:
     command: dart run build_runner clean
@@ -76,6 +81,11 @@ scripts:
 
   version:major:
     command: dart pub bump major
+    runInPackages:
+      - packages/*
+
+  publish:dry-run:
+    command: dart pub publish --dry-run
     runInPackages:
       - packages/*
 

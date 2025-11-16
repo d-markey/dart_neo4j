@@ -1,3 +1,7 @@
+## 1.2.0
+
+- Update dependencies; `analyzer` to `8.0.0`, `build` to `4.0.0` and `source_gen` to `4.0.0`
+
 ## 1.1.0
 
 ### BREAKING CHANGES

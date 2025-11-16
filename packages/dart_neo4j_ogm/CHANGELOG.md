@@ -1,3 +1,7 @@
+## 1.2.0
+
+- Version bump for consistency with dart_neo4j ecosystem
+
 ## 1.1.0+1
 
 - Refactored `CypherElementId` and `CypherId` to use const factories

@@ -1,7 +1,7 @@
 /// Cypher code generator for Neo4j OGM annotations.
 library;
 
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:arcade_views/arcade_views.dart';
 import 'package:build/build.dart';
 import 'package:dart_neo4j_ogm/dart_neo4j_ogm.dart';
@@ -15,12 +15,12 @@ import '../utils/annotation_reader.dart';
 class CypherGenerator extends GeneratorForAnnotation<CypherNode> {
   @override
   Future<String> generateForAnnotatedElement(
-    Element2 element,
+    Element element,
     ConstantReader annotation,
     BuildStep buildStep,
   ) async {
     // Validate that the annotation is applied to a class
-    if (element is! ClassElement2) {
+    if (element is! ClassElement) {
       throw InvalidGenerationSourceError(
         '@cypherNode can only be applied to classes',
         element: element,
@@ -52,11 +52,8 @@ class CypherGenerator extends GeneratorForAnnotation<CypherNode> {
   }
 
   /// Extracts class information from the annotated element.
-  ClassInfo _extractClassInfo(
-    ClassElement2 element,
-    ConstantReader annotation,
-  ) {
-    final className = element.name3 ?? 'UnknownClass';
+  ClassInfo _extractClassInfo(ClassElement element, ConstantReader annotation) {
+    final className = element.name ?? 'UnknownClass';
     final label = AnnotationReader.extractLabel(element, annotation);
     final includeFromNode = AnnotationReader.extractIncludeFromNode(annotation);
     final fields = _extractFieldInfo(element);
@@ -83,10 +80,10 @@ class CypherGenerator extends GeneratorForAnnotation<CypherNode> {
   }
 
   /// Validates that the class has a fromNode factory constructor.
-  void _validateFromNodeFactory(ClassElement2 element, String className) {
-    final constructors = element.constructors2;
+  void _validateFromNodeFactory(ClassElement element, String className) {
+    final constructors = element.constructors;
     final hasFromNodeFactory = constructors.any(
-      (constructor) => constructor.isFactory && constructor.name3 == 'fromNode',
+      (constructor) => constructor.isFactory && constructor.name == 'fromNode',
     );
 
     if (!hasFromNodeFactory) {
@@ -105,7 +102,7 @@ factory $className.fromNode(Node node) => _\$${className}FromNode(node);''';
 
   /// Validates that the class has at least one ID field (CypherId or CypherElementId).
   /// Also validates that there is only one occurrence of each type.
-  void _validateIdField(ClassElement2 element) {
+  void _validateIdField(ClassElement element) {
     final processableFields = AnnotationReader.getProcessableFields(element);
 
     // Check if we have fields available (normal case or after Freezed has run)
@@ -130,7 +127,7 @@ factory $className.fromNode(Node node) => _\$${className}FromNode(node);''';
       if (cypherIdFields.length > 1) {
         throw InvalidGenerationSourceError(
           'Classes annotated with @cypherNode can only have one CypherId field. '
-          'Found ${cypherIdFields.length} fields: ${cypherIdFields.map((f) => f.name3).join(', ')}',
+          'Found ${cypherIdFields.length} fields: ${cypherIdFields.map((f) => f.name).join(', ')}',
           element: element,
         );
       }
@@ -139,7 +136,7 @@ factory $className.fromNode(Node node) => _\$${className}FromNode(node);''';
       if (cypherElementIdFields.length > 1) {
         throw InvalidGenerationSourceError(
           'Classes annotated with @cypherNode can only have one CypherElementId field. '
-          'Found ${cypherElementIdFields.length} fields: ${cypherElementIdFields.map((f) => f.name3).join(', ')}',
+          'Found ${cypherElementIdFields.length} fields: ${cypherElementIdFields.map((f) => f.name).join(', ')}',
           element: element,
         );
       }
@@ -185,13 +182,13 @@ factory $className.fromNode(Node node) => _\$${className}FromNode(node);''';
   }
 
   /// Extracts field information from the class element.
-  List<FieldInfo> _extractFieldInfo(ClassElement2 element) {
+  List<FieldInfo> _extractFieldInfo(ClassElement element) {
     final processableFields = AnnotationReader.getProcessableFields(element);
 
     // If we have fields on the class (normal case or after Freezed has run)
     if (processableFields.isNotEmpty) {
       return processableFields.map((field) {
-        final fieldName = field.name3 ?? 'unknownField';
+        final fieldName = field.name ?? 'unknownField';
         final fieldType = field.type.getDisplayString();
         final cypherName = AnnotationReader.getCypherPropertyName(field);
         final isCypherIdField = fieldType == 'CypherId';
