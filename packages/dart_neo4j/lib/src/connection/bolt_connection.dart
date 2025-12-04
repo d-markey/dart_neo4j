@@ -425,7 +425,6 @@ class BoltConnection {
       _protocol.sendMessage(message);
 
       timeout ??= const Duration(seconds: 30);
-      print('send $message with $timeout');
       return await completer.future.timeout(
         timeout,
         onTimeout: () {
