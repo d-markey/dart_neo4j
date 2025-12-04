@@ -7,8 +7,8 @@ import 'package:dart_neo4j/src/auth/auth_token.dart';
 import 'package:dart_neo4j/src/auth/basic_auth.dart';
 import 'package:dart_neo4j/src/driver/uri_parser.dart';
 import 'package:dart_neo4j/src/exceptions/neo4j_exception.dart';
-import 'package:dart_neo4j/src/result/result.dart';
 import 'package:dart_neo4j/src/result/record.dart';
+import 'package:dart_neo4j/src/result/result.dart';
 import 'package:dart_neo4j/src/result/summary.dart';
 
 /// A Bolt protocol connection that handles Neo4j communication.
@@ -303,6 +303,7 @@ class BoltConnection {
   Future<Result> run(
     String cypher, [
     Map<String, dynamic> parameters = const {},
+    Duration? timeout,
   ]) async {
     // Check if server is in FAILED state and attempt recovery
     if (_serverState == BoltServerState.failed) {
@@ -371,7 +372,7 @@ class BoltConnection {
       _currentStreamingResult = result;
       _currentStreamingKeys = keys;
       final pullMessage = BoltMessageFactory.pull();
-      final pullResponse = await _sendMessage(pullMessage);
+      final pullResponse = await _sendMessage(pullMessage, timeout);
 
       if (pullResponse is BoltSuccessMessage) {
         // PULL completed successfully - server returns to READY or TX_READY state
@@ -412,7 +413,10 @@ class BoltConnection {
   }
 
   /// Sends a message and waits for a response.
-  Future<BoltMessage> _sendMessage(BoltMessage message) async {
+  Future<BoltMessage> _sendMessage(
+    BoltMessage message, [
+    Duration? timeout,
+  ]) async {
     final requestId = _nextRequestId++;
     final completer = Completer<BoltMessage>();
     _pendingRequests[requestId] = completer;
@@ -420,13 +424,15 @@ class BoltConnection {
     try {
       _protocol.sendMessage(message);
 
+      timeout ??= const Duration(seconds: 30);
+      print('send $message with $timeout');
       return await completer.future.timeout(
-        const Duration(seconds: 30),
+        timeout,
         onTimeout: () {
           _pendingRequests.remove(requestId);
           throw ConnectionTimeoutException(
             'Message timeout: no response received',
-            const Duration(seconds: 30),
+            timeout,
           );
         },
       );

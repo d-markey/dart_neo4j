@@ -1,3 +1,9 @@
+## 1.2.1-wip
+
+- Add optional `timeout` parameter to `BoltConnection.run` (and `BoltConnection._sendMessage`, with default set to 30 seconds for backward compatibility); the timeout is used on the `pull` message.
+- Add optional `timeout` parameter to `SessionConfiguration` (defaults to 30 seconds) and use that timeout when running queries directly over the session.
+- Use `TransactionConfig.timeout` when running queries over a transaction.
+
 ## 1.2.0
 
 - Version bump for consistency with dart_neo4j ecosystem

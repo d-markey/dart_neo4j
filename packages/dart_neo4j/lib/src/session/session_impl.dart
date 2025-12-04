@@ -42,7 +42,11 @@ class SessionImpl implements Session {
       pooledConnection = await _connectionPool.acquire();
 
       // Execute query
-      final result = await pooledConnection.connection.run(cypher, parameters);
+      final result = await pooledConnection.connection.run(
+        cypher,
+        parameters,
+        config.timeout,
+      );
 
       // Release connection back to pool immediately for auto-commit transactions
       _connectionPool.release(pooledConnection);

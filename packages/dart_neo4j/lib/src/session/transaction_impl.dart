@@ -44,7 +44,11 @@ abstract class TransactionImpl implements Transaction {
     }
 
     try {
-      return await _pooledConnection.connection.run(cypher, parameters);
+      return await _pooledConnection.connection.run(
+        cypher,
+        parameters,
+        config?.timeout,
+      );
     } catch (e) {
       _state = TransactionState.markedForRollback;
       rethrow;

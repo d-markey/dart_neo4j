@@ -22,24 +22,36 @@ class SessionConfig {
   /// Bookmarks for causal consistency.
   final List<String> bookmarks;
 
+  /// Default query timeout.
+  final Duration timeout;
+
   /// Creates a new session configuration.
   const SessionConfig({
     this.database,
     this.accessMode = AccessMode.write,
     this.bookmarks = const [],
-  });
+    Duration? timeout,
+  }) : timeout = timeout ?? const Duration(seconds: 30);
 
   /// Creates a read-only session configuration.
-  const SessionConfig.read({this.database, this.bookmarks = const []})
-    : accessMode = AccessMode.read;
+  const SessionConfig.read({
+    this.database,
+    this.bookmarks = const [],
+    Duration? timeout,
+  }) : accessMode = AccessMode.read,
+       timeout = timeout ?? const Duration(seconds: 30);
 
   /// Creates a read-write session configuration.
-  const SessionConfig.write({this.database, this.bookmarks = const []})
-    : accessMode = AccessMode.write;
+  const SessionConfig.write({
+    this.database,
+    this.bookmarks = const [],
+    Duration? timeout,
+  }) : accessMode = AccessMode.write,
+       timeout = timeout ?? const Duration(seconds: 30);
 
   @override
   String toString() {
-    return 'SessionConfig{database: $database, accessMode: $accessMode, bookmarks: ${bookmarks.length}}';
+    return 'SessionConfig{database: $database, accessMode: $accessMode, bookmarks: ${bookmarks.length}, timeout: $timeout}';
   }
 }
 
