@@ -368,43 +368,61 @@ class BoltConnection {
       // Create result
       final result = Result.forQuery(cypher, parameters, keys);
 
-      // Send PULL message and wait for completion - records will be collected via _handleMessage
+      // Send PULL message but do not wait for completion - records will be collected via _handleMessage
+      final pullMessage = BoltMessageFactory.pull();
+      _sendMessage(pullMessage, timeout).then(
+        (pullResponse) {
+          if (pullResponse is BoltSuccessMessage) {
+            // PULL completed successfully - server returns to READY or TX_READY state
+            if (_serverState == BoltServerState.txStreaming) {
+              _serverState = BoltServerState.txReady;
+            } else {
+              _serverState = BoltServerState.ready;
+            }
+            result.complete(
+              _createResultSummary(pullResponse, cypher, parameters),
+            );
+          } else if (pullResponse is BoltFailureMessage) {
+            // PULL failed - server transitions to FAILED state
+            _serverState = BoltServerState.failed;
+            final metadata =
+                pullResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+            final code = metadata['code'] as String? ?? 'unknown';
+            final message =
+                metadata['message'] as String? ?? 'Result fetch failed';
+            result.completeWithError(DatabaseException(message, code));
+          } else if (pullResponse is BoltIgnoredMessage) {
+            // PULL was ignored - server likely already in FAILED state
+            result.completeWithError(
+              DatabaseException(
+                'Query was ignored by server',
+                'Neo.ClientError.Request.Invalid',
+              ),
+            );
+          } else {
+            result.completeWithError(
+              ProtocolException(
+                'Unexpected response to PULL: ${pullResponse.runtimeType}',
+              ),
+            );
+          }
+        },
+        onError: (ex, st) {
+          if (ex is ConnectionTimeoutException) {
+            result.completeWithError(
+              Exception(
+                'The PULL operation has been cancelled after ${timeout}.',
+              ),
+              st,
+            );
+          } else {
+            result.completeWithError(ex, st);
+          }
+        },
+      );
+
       _currentStreamingResult = result;
       _currentStreamingKeys = keys;
-      final pullMessage = BoltMessageFactory.pull();
-      final pullResponse = await _sendMessage(pullMessage, timeout);
-
-      if (pullResponse is BoltSuccessMessage) {
-        // PULL completed successfully - server returns to READY or TX_READY state
-        if (_serverState == BoltServerState.txStreaming) {
-          _serverState = BoltServerState.txReady;
-        } else {
-          _serverState = BoltServerState.ready;
-        }
-        result.complete(_createResultSummary(pullResponse, cypher, parameters));
-      } else if (pullResponse is BoltFailureMessage) {
-        // PULL failed - server transitions to FAILED state
-        _serverState = BoltServerState.failed;
-        final metadata =
-            pullResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
-        final code = metadata['code'] as String? ?? 'unknown';
-        final message = metadata['message'] as String? ?? 'Result fetch failed';
-        result.completeWithError(DatabaseException(message, code));
-      } else if (pullResponse is BoltIgnoredMessage) {
-        // PULL was ignored - server likely already in FAILED state
-        result.completeWithError(
-          DatabaseException(
-            'Query was ignored by server',
-            'Neo.ClientError.Request.Invalid',
-          ),
-        );
-      } else {
-        result.completeWithError(
-          ProtocolException(
-            'Unexpected response to PULL: ${pullResponse.runtimeType}',
-          ),
-        );
-      }
 
       return result;
     } catch (e) {
@@ -420,6 +438,12 @@ class BoltConnection {
     final requestId = _nextRequestId++;
     final completer = Completer<BoltMessage>();
     _pendingRequests[requestId] = completer;
+
+    if (_currentStreamingResult != null) {
+      throw ProtocolException(
+        'A pull operation is in progress, cannot send a new message before the end of the stream.',
+      );
+    }
 
     try {
       _protocol.sendMessage(message);
