@@ -132,46 +132,50 @@ final class PsString extends PsDataType<String, String> {
   ByteData toByteData() {
     final utf8Bytes = utf8.encode(value);
     final length = utf8Bytes.length;
-    late final ByteData bytes;
 
     if (length < 16) {
       // Tiny string
-      bytes = ByteData(1 + length);
-      bytes.setUint8(0, 0x80 + length);
-
-      for (var i = 0; i < length; i++) {
-        bytes.setUint8(1 + i, utf8Bytes[i]);
-      }
+      return ByteData(1 + length)
+        ..setUint8(0, 0x80 + length)
+        ..buffer.asUint8List().setRange(1, 1 + length, utf8Bytes);
     } else if (length <= 0xFF) {
       // 8-bit size
-      bytes = ByteData(2 + length);
-      bytes.setUint8(0, 0xD0);
-      bytes.setUint8(1, length);
-
-      for (var i = 0; i < length; i++) {
-        bytes.setUint8(2 + i, utf8Bytes[i]);
-      }
+      return ByteData(2 + length)
+        ..setUint8(0, 0xD0)
+        ..setUint8(1, length)
+        ..buffer.asUint8List().setRange(2, 2 + length, utf8Bytes);
     } else if (length <= 0xFFFF) {
       // 16-bit size
-      bytes = ByteData(3 + length);
-      bytes.setUint8(0, 0xD1);
-      bytes.setUint16(1, length, Endian.big);
-
-      for (var i = 0; i < length; i++) {
-        bytes.setUint8(3 + i, utf8Bytes[i]);
-      }
+      return ByteData(3 + length)
+        ..setUint8(0, 0xD1)
+        ..setUint16(1, length, Endian.big)
+        ..buffer.asUint8List().setRange(3, 3 + length, utf8Bytes);
     } else {
       // 32-bit size
-      bytes = ByteData(5 + length);
-      bytes.setUint8(0, 0xD2);
-      bytes.setUint32(1, length, Endian.big);
-
-      for (var i = 0; i < length; i++) {
-        bytes.setUint8(5 + i, utf8Bytes[i]);
-      }
+      return ByteData(5 + length)
+        ..setUint8(0, 0xD2)
+        ..setUint32(1, length, Endian.big)
+        ..buffer.asUint8List().setRange(5, 5 + length, utf8Bytes);
     }
+  }
 
-    return bytes;
+  @override
+  int get lengthInBytes {
+    final length = utf8.encode(value).length;
+
+    if (length < 16) {
+      // Tiny string
+      return 1 + length;
+    } else if (length <= 0xFF) {
+      // 8-bit size
+      return 2 + length;
+    } else if (length <= 0xFFFF) {
+      // 16-bit size
+      return 3 + length;
+    } else {
+      // 32-bit size
+      return 5 + length;
+    }
   }
 
   /// Checks if this string equals another object.

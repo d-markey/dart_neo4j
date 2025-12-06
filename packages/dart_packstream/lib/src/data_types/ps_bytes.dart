@@ -137,38 +137,39 @@ final class PsBytes extends PsDataType<Uint8List, Uint8List>
   @override
   ByteData toByteData() {
     final length = value.length;
-    late final ByteData bytes;
+    final bytes = ByteData(lengthInBytes);
 
     if (length <= 0xFF) {
       // 8-bit size
-      bytes = ByteData(2 + length)
+      return bytes
         ..setUint8(0, 0xCC)
-        ..setUint8(1, length);
-
-      for (var i = 0; i < length; i++) {
-        bytes.setUint8(2 + i, value[i]);
-      }
+        ..setUint8(1, length)
+        ..buffer.asUint8List().setRange(2, 2 + length, value);
     } else if (length <= 0xFFFF) {
       // 16-bit size
-      bytes = ByteData(3 + length)
+      return bytes
         ..setUint8(0, 0xCD)
-        ..setUint16(1, length, Endian.big);
-
-      for (var i = 0; i < length; i++) {
-        bytes.setUint8(3 + i, value[i]);
-      }
+        ..setUint16(1, length, Endian.big)
+        ..buffer.asUint8List().setRange(3, 3 + length, value);
     } else {
       // 32-bit size
-      bytes = ByteData(5 + length)
+      return bytes
         ..setUint8(0, 0xCE)
-        ..setUint32(1, length, Endian.big);
-
-      for (var i = 0; i < length; i++) {
-        bytes.setUint8(5 + i, value[i]);
-      }
+        ..setUint32(1, length, Endian.big)
+        ..buffer.asUint8List().setRange(5, 5 + length, value);
     }
+  }
 
-    return bytes;
+  @override
+  int get lengthInBytes {
+    final length = value.length;
+    if (length <= 0xFF) {
+      return length + 2;
+    } else if (length <= 0xFFFF) {
+      return length + 3;
+    } else {
+      return length + 5;
+    }
   }
 
   /// Checks if this byte array equals another object.

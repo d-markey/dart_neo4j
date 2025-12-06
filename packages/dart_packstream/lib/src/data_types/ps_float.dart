@@ -79,6 +79,9 @@ final class PsFloat extends PsDataType<double, double> {
       ..setFloat64(1, value, Endian.big);
   }
 
+  @override
+  int get lengthInBytes => 9;
+
   /// Checks if this floating-point value equals another object.
   ///
   /// Returns true if the other object is a [PsFloat] with the same value.

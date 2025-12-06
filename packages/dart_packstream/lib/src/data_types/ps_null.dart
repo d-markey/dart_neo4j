@@ -54,6 +54,9 @@ final class PsNull extends PsDataType<Null, Null> {
     return ByteData(1)..setUint8(0, marker);
   }
 
+  @override
+  int get lengthInBytes => 1;
+
   /// Checks if this null value equals another object.
   ///
   /// Returns true if the other object is also a [PsNull].

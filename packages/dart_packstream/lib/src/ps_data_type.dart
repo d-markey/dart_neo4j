@@ -1,16 +1,16 @@
 import 'dart:collection';
-import 'dart:typed_data';
 import 'dart:convert';
+import 'dart:typed_data';
 
 part 'data_types/ps_boolean.dart';
 part 'data_types/ps_bytes.dart';
 part 'data_types/ps_dictionary.dart';
 part 'data_types/ps_float.dart';
 part 'data_types/ps_int.dart';
-part 'data_types/ps_int8.dart';
 part 'data_types/ps_int16.dart';
 part 'data_types/ps_int32.dart';
 part 'data_types/ps_int64.dart';
+part 'data_types/ps_int8.dart';
 part 'data_types/ps_list.dart';
 part 'data_types/ps_null.dart';
 part 'data_types/ps_string.dart';
@@ -223,6 +223,11 @@ sealed class PsDataType<T, D> {
   /// This method serializes the data according to the PackStream specification,
   /// including the marker byte and any additional bytes needed to represent the value.
   ByteData toByteData();
+
+  /// Compute the size in bytes of this PackStream data type.
+  ///
+  /// Same as toByteData().lengthInBytes, but avoids many instantiations.
+  int get lengthInBytes;
 
   /// Converts this PackStream data type to a byte array.
   ///

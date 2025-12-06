@@ -153,36 +153,51 @@ final class PsDictionary
     // Calculate total size needed
     int totalSize = sizeBytes.lengthInBytes;
     for (final entry in _values.entries) {
-      final keyBytes = entry.key.toByteData();
-      final valueBytes = entry.value.toByteData();
-      totalSize += keyBytes.lengthInBytes + valueBytes.lengthInBytes;
+      totalSize += entry.key.lengthInBytes + entry.value.lengthInBytes;
     }
 
     final result = ByteData(totalSize);
-    int offset = 0;
+    final bytes = result.buffer.asUint8List();
 
     // Write marker and size
-    for (int i = 0; i < sizeBytes.lengthInBytes; i++) {
-      result.setUint8(offset++, sizeBytes.getUint8(i));
-    }
+    bytes.setRange(0, sizeBytes.lengthInBytes, sizeBytes.buffer.asUint8List());
 
     // Write key-value pairs
+    int offset = sizeBytes.lengthInBytes;
     for (final entry in _values.entries) {
-      final keyBytes = entry.key.toByteData();
-      final valueBytes = entry.value.toByteData();
-
       // Write key
-      for (int i = 0; i < keyBytes.lengthInBytes; i++) {
-        result.setUint8(offset++, keyBytes.getUint8(i));
-      }
+      var itemBytes = entry.key.toByteData();
+      bytes.setRange(
+        offset,
+        offset + itemBytes.lengthInBytes,
+        itemBytes.buffer.asUint8List(),
+      );
+      offset += itemBytes.lengthInBytes;
 
       // Write value
-      for (int i = 0; i < valueBytes.lengthInBytes; i++) {
-        result.setUint8(offset++, valueBytes.getUint8(i));
-      }
+      itemBytes = entry.value.toByteData();
+      bytes.setRange(
+        offset,
+        offset + itemBytes.lengthInBytes,
+        itemBytes.buffer.asUint8List(),
+      );
+      offset += itemBytes.lengthInBytes;
     }
 
     return result;
+  }
+
+  @override
+  int get lengthInBytes {
+    final size = _values.length;
+
+    // Calculate total size needed
+    int totalSize = _getSizeBytes(size).lengthInBytes;
+    for (final entry in _values.entries) {
+      totalSize += entry.key.lengthInBytes + entry.value.lengthInBytes;
+    }
+
+    return totalSize;
   }
 
   /// Creates the size bytes portion of the PackStream representation.
@@ -194,20 +209,17 @@ final class PsDictionary
     if (size < 16) {
       return ByteData(1)..setUint8(0, 0xA0 + size);
     } else if (size <= 0xFF) {
-      final bytes = ByteData(2);
-      bytes.setUint8(0, 0xD8);
-      bytes.setUint8(1, size);
-      return bytes;
+      return ByteData(2)
+        ..setUint8(0, 0xD8)
+        ..setUint8(1, size);
     } else if (size <= 0xFFFF) {
-      final bytes = ByteData(3);
-      bytes.setUint8(0, 0xD9);
-      bytes.setUint16(1, size, Endian.big);
-      return bytes;
+      return ByteData(3)
+        ..setUint8(0, 0xD9)
+        ..setUint16(1, size, Endian.big);
     } else {
-      final bytes = ByteData(5);
-      bytes.setUint8(0, 0xDA);
-      bytes.setUint32(1, size, Endian.big);
-      return bytes;
+      return ByteData(5)
+        ..setUint8(0, 0xDA)
+        ..setUint32(1, size, Endian.big);
     }
   }
 

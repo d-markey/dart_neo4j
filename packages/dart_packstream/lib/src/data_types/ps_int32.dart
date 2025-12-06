@@ -72,6 +72,9 @@ final class PsInt32 extends PsInt {
       ..setInt32(1, value, Endian.big);
   }
 
+  @override
+  int get lengthInBytes => 5;
+
   /// Checks if this 32-bit integer equals another object.
   ///
   /// Returns true if the other object is a [PsInt32] with the same value.

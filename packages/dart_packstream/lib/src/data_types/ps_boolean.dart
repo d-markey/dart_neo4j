@@ -75,6 +75,9 @@ final class PsBoolean extends PsDataType<bool, bool> {
     return ByteData(1)..setUint8(0, marker);
   }
 
+  @override
+  int get lengthInBytes => 1;
+
   /// Checks if this boolean value equals another object.
   ///
   /// Returns true if the other object is a [PsBoolean] with the same value.

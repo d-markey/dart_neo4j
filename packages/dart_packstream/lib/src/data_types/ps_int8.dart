@@ -72,6 +72,9 @@ final class PsInt8 extends PsInt {
       ..setInt8(1, value);
   }
 
+  @override
+  int get lengthInBytes => 2;
+
   /// Checks if this 8-bit integer equals another object.
   ///
   /// Returns true if the other object is a [PsInt8] with the same value.

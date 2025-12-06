@@ -115,23 +115,43 @@ abstract class PsStructure extends PsDataType<List<PsDataType>, List<Object?>> {
     }
 
     final result = ByteData(totalSize);
-    int offset = 0;
+    final bytes = result.buffer.asUint8List();
 
-    // Write marker byte
-    result.setUint8(offset++, marker);
-
-    // Write tag byte
-    result.setUint8(offset++, tagByte);
+    // Write marker & tag bytes
+    result.setUint8(0, marker);
+    result.setUint8(1, tagByte);
 
     // Write field values
+    int offset = 2;
     for (final value in values) {
       final valueBytes = value.toByteData();
-      for (int i = 0; i < valueBytes.lengthInBytes; i++) {
-        result.setUint8(offset++, valueBytes.getUint8(i));
-      }
+      final end = offset + valueBytes.lengthInBytes;
+      bytes.setRange(offset, end, valueBytes.buffer.asUint8List());
+      offset = end;
     }
 
     return result;
+  }
+
+  @override
+  int get lengthInBytes {
+    if (numberOfFields != values.length) {
+      throw StateError(
+        'Number of fields ($numberOfFields) does not match values length (${values.length})',
+      );
+    }
+
+    if (tagByte < 0 || tagByte > 127) {
+      throw StateError('Tag byte must be between 0 and 127, got: $tagByte');
+    }
+
+    // Calculate total size needed
+    int totalSize = 2; // marker + tag byte
+    for (final value in values) {
+      totalSize += value.lengthInBytes;
+    }
+
+    return totalSize;
   }
 
   /// Creates a Structure from the given tag byte and parsed field values.

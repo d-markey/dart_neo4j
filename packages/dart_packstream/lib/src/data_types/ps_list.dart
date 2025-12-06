@@ -89,26 +89,38 @@ final class PsList extends PsDataType<List<PsDataType>, List<Object?>>
     // Calculate total size needed
     int totalSize = sizeBytes.lengthInBytes;
     for (final item in _values) {
-      totalSize += item.toByteData().lengthInBytes;
+      totalSize += item.lengthInBytes;
     }
 
-    final result = ByteData(totalSize);
-    int offset = 0;
+    final result = Uint8List(totalSize);
 
     // Write marker and size
-    for (int i = 0; i < sizeBytes.lengthInBytes; i++) {
-      result.setUint8(offset++, sizeBytes.getUint8(i));
-    }
+    result.setRange(0, sizeBytes.lengthInBytes, sizeBytes.buffer.asUint8List());
 
     // Write items
+    var offset = sizeBytes.lengthInBytes;
     for (final item in _values) {
-      final itemBytes = item.toByteData();
-      for (int i = 0; i < itemBytes.lengthInBytes; i++) {
-        result.setUint8(offset++, itemBytes.getUint8(i));
-      }
+      final itemBytes = item.toByteData().buffer.asUint8List();
+      final end = offset + itemBytes.lengthInBytes;
+      result.setRange(offset, end, itemBytes);
+      offset = end;
     }
 
-    return result;
+    return ByteData.view(result.buffer);
+  }
+
+  @override
+  int get lengthInBytes {
+    final size = _values.length;
+    final sizeBytes = _getSizeBytes(size);
+
+    // Calculate total size needed
+    int totalSize = sizeBytes.lengthInBytes;
+    for (final item in _values) {
+      totalSize += item.lengthInBytes;
+    }
+
+    return totalSize;
   }
 
   /// Creates the size bytes portion of the PackStream representation.
@@ -120,20 +132,17 @@ final class PsList extends PsDataType<List<PsDataType>, List<Object?>>
     if (size < 16) {
       return ByteData(1)..setUint8(0, 0x90 + size);
     } else if (size <= 0xFF) {
-      final bytes = ByteData(2);
-      bytes.setUint8(0, 0xD4);
-      bytes.setUint8(1, size);
-      return bytes;
+      return ByteData(2)
+        ..setUint8(0, 0xD4)
+        ..setUint8(1, size);
     } else if (size <= 0xFFFF) {
-      final bytes = ByteData(3);
-      bytes.setUint8(0, 0xD5);
-      bytes.setUint16(1, size, Endian.big);
-      return bytes;
+      return ByteData(3)
+        ..setUint8(0, 0xD5)
+        ..setUint16(1, size, Endian.big);
     } else {
-      final bytes = ByteData(5);
-      bytes.setUint8(0, 0xD6);
-      bytes.setUint32(1, size, Endian.big);
-      return bytes;
+      return ByteData(5)
+        ..setUint8(0, 0xD6)
+        ..setUint32(1, size, Endian.big);
     }
   }
 

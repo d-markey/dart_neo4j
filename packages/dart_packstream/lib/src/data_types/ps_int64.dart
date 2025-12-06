@@ -76,6 +76,9 @@ final class PsInt64 extends PsInt {
       ..setInt64(1, value, Endian.big);
   }
 
+  @override
+  int get lengthInBytes => 9;
+
   /// Checks if this 64-bit integer equals another object.
   ///
   /// Returns true if the other object is a [PsInt64] with the same value.

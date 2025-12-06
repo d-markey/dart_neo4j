@@ -72,6 +72,9 @@ final class PsInt16 extends PsInt {
       ..setInt16(1, value, Endian.big);
   }
 
+  @override
+  int get lengthInBytes => 3;
+
   /// Checks if this 16-bit integer equals another object.
   ///
   /// Returns true if the other object is a [PsInt16] with the same value.

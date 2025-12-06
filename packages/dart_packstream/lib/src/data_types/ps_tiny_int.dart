@@ -76,6 +76,9 @@ final class PsTinyInt extends PsInt {
     return ByteData(1)..setInt8(0, value);
   }
 
+  @override
+  int get lengthInBytes => 1;
+
   /// Checks if this tiny integer equals another object.
   ///
   /// Returns true if the other object is a [PsTinyInt] with the same value.
