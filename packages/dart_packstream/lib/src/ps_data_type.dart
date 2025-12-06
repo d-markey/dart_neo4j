@@ -208,7 +208,7 @@ sealed class PsDataType<T, D> {
       values.add(field);
 
       // Move offset forward by the size of the field
-      final fieldSize = field.toByteData().lengthInBytes;
+      final fieldSize = field.lengthInBytes;
       if (fieldSize <= 0) {
         throw ArgumentError('Invalid field size: $fieldSize');
       }

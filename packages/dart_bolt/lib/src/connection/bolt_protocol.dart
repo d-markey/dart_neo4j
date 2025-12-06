@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import 'package:dart_bolt/src/connection/bolt_socket.dart';
 import 'package:dart_bolt/src/connection/connection_exceptions.dart';
-import 'package:dart_packstream/dart_packstream.dart';
 import 'package:dart_bolt/src/messages/bolt_message.dart';
+import 'package:dart_packstream/dart_packstream.dart';
 
 /// Handles Bolt protocol operations including handshake, chunking, and message parsing.
 class BoltProtocol {
@@ -94,7 +94,7 @@ class BoltProtocol {
 
   /// Sends a Bolt message by chunking it according to the protocol.
   void sendMessage(BoltMessage message) {
-    final messageData = message.toByteData().buffer.asUint8List();
+    final messageData = message.toBytes();
     final chunkedData = chunkMessage(messageData);
     _socket.send(chunkedData);
   }

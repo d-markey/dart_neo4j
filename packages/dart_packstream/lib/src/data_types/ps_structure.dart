@@ -111,7 +111,7 @@ abstract class PsStructure extends PsDataType<List<PsDataType>, List<Object?>> {
     // Calculate total size needed
     int totalSize = 2; // marker + tag byte
     for (final value in values) {
-      totalSize += value.toByteData().lengthInBytes;
+      totalSize += value.lengthInBytes;
     }
 
     final result = ByteData(totalSize);
@@ -124,10 +124,9 @@ abstract class PsStructure extends PsDataType<List<PsDataType>, List<Object?>> {
     // Write field values
     int offset = 2;
     for (final value in values) {
-      final valueBytes = value.toByteData();
-      final end = offset + valueBytes.lengthInBytes;
-      bytes.setRange(offset, end, valueBytes.buffer.asUint8List());
-      offset = end;
+      final valueBytes = value.toBytes();
+      bytes.setRange(offset, offset + valueBytes.lengthInBytes, valueBytes);
+      offset += valueBytes.lengthInBytes;
     }
 
     return result;

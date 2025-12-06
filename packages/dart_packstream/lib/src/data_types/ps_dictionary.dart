@@ -377,7 +377,7 @@ final class PsDictionary
       entries[key] = value;
 
       // Get the size of the value and advance the offset
-      final valueSize = value.toByteData().lengthInBytes;
+      final valueSize = value.lengthInBytes;
       if (valueSize <= 0) {
         throw ArgumentError('Invalid value size: $valueSize');
       }

@@ -100,10 +100,9 @@ final class PsList extends PsDataType<List<PsDataType>, List<Object?>>
     // Write items
     var offset = sizeBytes.lengthInBytes;
     for (final item in _values) {
-      final itemBytes = item.toByteData().buffer.asUint8List();
-      final end = offset + itemBytes.lengthInBytes;
-      result.setRange(offset, end, itemBytes);
-      offset = end;
+      final itemBytes = item.toBytes();
+      result.setRange(offset, offset + itemBytes.lengthInBytes, itemBytes);
+      offset += itemBytes.lengthInBytes;
     }
 
     return ByteData.view(result.buffer);
@@ -221,7 +220,7 @@ final class PsList extends PsDataType<List<PsDataType>, List<Object?>>
       items.add(item);
 
       // Move offset forward by the size of the item
-      final itemSize = item.toByteData().lengthInBytes;
+      final itemSize = item.lengthInBytes;
       if (itemSize <= 0) {
         throw ArgumentError('Invalid item size: $itemSize');
       }
