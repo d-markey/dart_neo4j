@@ -9,14 +9,14 @@ environment:
 
 dependencies:
   # Core build system dependencies
-  build: ^4.0.0
-  source_gen: ^4.0.0
+  build: ^4.0.0 # Configured via catalog
+  source_gen: ^4.0.0 # Configured via catalog
 
   # Template rendering
   arcade_views: ^1.0.0
 
   # Analyzer for code inspection
-  analyzer: ^8.0.0
+  analyzer: ^8.0.0 # Configured via catalog
 
   # Annotation package
   dart_neo4j_ogm: ^1.0.0

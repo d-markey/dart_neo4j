@@ -1,7 +1,7 @@
 name: _
 
 environment:
-  sdk: ^3.7.0
+  sdk: ^3.8.0
 
 workspace:
   - packages/dart_bolt
@@ -10,6 +10,6 @@ workspace:
   - packages/dart_neo4j_ogm_generator
   - packages/dart_packstream
 dependencies:
-  analyzer: ^8.0.0
-  build: ^4.0.0
-  source_gen: ^4.0.0
+  analyzer: ^8.0.0 # Configured via catalog
+  build: ^4.0.0 # Configured via catalog
+  source_gen: ^4.0.0 # Configured via catalog
