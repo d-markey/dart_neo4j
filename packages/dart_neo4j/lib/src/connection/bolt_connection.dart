@@ -113,7 +113,7 @@ class BoltConnection {
     final helloMessage = _createHelloMessage(includeAuth ? _auth : null);
     final helloResponse = await _sendMessage(helloMessage);
 
-    if (helloResponse is BoltSuccessMessage && includeAuth) {
+    if (helloResponse is BoltSuccessMessage) {
       if (includeAuth) {
         // Authentication successful - server is now in READY state
         _serverState = BoltServerState.ready;
