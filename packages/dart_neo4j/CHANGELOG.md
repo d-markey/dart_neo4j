@@ -1,9 +1,13 @@
-## 1.2.1-wip
+## 1.2.1
+
+#### Allow for running long running queries (#4)
 
 - Add optional `timeout` parameter to `BoltConnection.run` (and `BoltConnection._sendMessage`, with default set to 30 seconds for backward compatibility); the timeout is used on the `pull` message.
 - Add optional `timeout` parameter to `SessionConfiguration` (defaults to 30 seconds) and use that timeout when running queries directly over the session.
 - Use `TransactionConfig.timeout` when running queries over a transaction.
 - Implement `startQuery()` methods in addition to the existing `run()` methods. The existing implementations of `run()` returns only after all records have been streamed from the server. `startQuery()` returns before the query has fully executing, allowing for early streaming of records by clients. The query has finished executing when [Result.done] and [Result.summary()] complete (they are based on the same future).
+
+Thanks to [d-markey](https://github.com/d-markey) for the contribution.
 
 ## 1.2.0
 
@@ -58,3 +62,4 @@
 ## 0.0.1
 
 - Initial release of dart_neo4j package.
+
