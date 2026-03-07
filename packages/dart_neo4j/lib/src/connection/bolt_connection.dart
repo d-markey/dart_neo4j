@@ -107,30 +107,29 @@ class BoltConnection {
     // Step 1: Send HELLO message (without authentication for newer protocols)
     _serverState = BoltServerState.authentication;
 
-    final helloMessage = BoltMessageFactory.hello(
-      userAgent: 'dart_neo4j/1.0.0',
-      boltAgent: {
-        'product': 'dart_neo4j/1.0.0',
-        'platform': 'Dart',
-        'language': 'Dart',
-      },
-    );
+    // see https://neo4j.com/docs/bolt/current/bolt/server-state/#_version_5_1
+    final includeAuth = (_protocol.agreedVersion! < 0x00000501);
 
+    final helloMessage = _createHelloMessage(includeAuth ? _auth : null);
     final helloResponse = await _sendMessage(helloMessage);
 
-    if (helloResponse is! BoltSuccessMessage) {
-      if (helloResponse is BoltFailureMessage) {
-        _serverState = BoltServerState.failed;
-        final metadata =
-            helloResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
-        final code = metadata['code'] as String? ?? 'unknown';
-        final message = metadata['message'] as String? ?? 'HELLO failed';
-        throw DatabaseException(message, code);
-      } else {
-        throw ProtocolException(
-          'Unexpected response to HELLO: ${helloResponse.runtimeType}',
-        );
+    if (helloResponse is BoltSuccessMessage && includeAuth) {
+      if (includeAuth) {
+        // Authentication successful - server is now in READY state
+        _serverState = BoltServerState.ready;
+        return;
       }
+    } else if (helloResponse is BoltFailureMessage) {
+      _serverState = BoltServerState.failed;
+      final metadata =
+          helloResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+      final code = metadata['code'] as String? ?? 'unknown';
+      final message = metadata['message'] as String? ?? 'HELLO failed';
+      throw DatabaseException(message, code);
+    } else {
+      throw ProtocolException(
+        'Unexpected response to HELLO: ${helloResponse.runtimeType}',
+      );
     }
 
     // Step 2: Send LOGON message with authentication details
@@ -156,6 +155,35 @@ class BoltConnection {
     } else {
       throw ProtocolException(
         'Unexpected response to LOGON: ${logonResponse.runtimeType}',
+      );
+    }
+  }
+
+  /// Creates a HELLO message based on the agreedVersion.
+  BoltHelloMessage _createHelloMessage(AuthToken? auth) {
+    if (auth == null || auth is NoAuth) {
+      return BoltMessageFactory.hello(
+        userAgent: 'dart_neo4j/1.0.0',
+        boltAgent: {
+          'product': 'dart_neo4j/1.0.0',
+          'platform': 'Dart',
+          'language': 'Dart',
+        },
+      );
+    } else if (auth is BasicAuth) {
+      return BoltMessageFactory.helloWithAuth(
+        userAgent: 'dart_neo4j/1.0.0',
+        boltAgent: {
+          'product': 'dart_neo4j/1.0.0',
+          'platform': 'Dart',
+          'language': 'Dart',
+        },
+        username: auth.username,
+        password: auth.password,
+      );
+    } else {
+      throw ClientException(
+        'Only Basic authentication is supported with legacy protocols (< 5.1)',
       );
     }
   }

@@ -1,4 +1,9 @@
+## 1.2.2
+
+- Version bump for consistency with dart_neo4j ecosystem
+
 ## 1.2.1
+
 - Version bump for consistency with dart_neo4j ecosystem
 
 ## 1.2.0

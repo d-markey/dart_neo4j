@@ -1,3 +1,10 @@
+## 1.2.2
+
+#### Support new authentication flow with Neo4j version >= 5.1
+
+- Starting from 5.1, the `HELLO` message does not support sending authentication details.
+- For more information, see https://neo4j.com/docs/bolt/current/bolt/server-state/#_version_5_1. 
+
 ## 1.2.1
 
 #### Allow for running long running queries (#4)
