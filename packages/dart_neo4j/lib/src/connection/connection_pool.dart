@@ -306,7 +306,7 @@ class ConnectionPool {
       final pooledConnection = PooledConnection(boltConnection);
       _allConnections.add(pooledConnection);
       return pooledConnection;
-    } catch (e) {
+    } catch (_) {
       await boltConnection.close();
       rethrow;
     }

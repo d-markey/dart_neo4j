@@ -145,10 +145,14 @@ class BoltConnection {
       if (helloResponse is BoltFailureMessage) {
         _serverState = BoltServerState.failed;
         final metadata =
-            helloResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+            helloResponse.metadata.dartValue as Map<String, dynamic>? ??
+            const {};
         final code = metadata['code'] as String? ?? 'unknown';
-        final message = metadata['message'] as String? ?? 'HELLO failed';
-        throw DatabaseException(message, code);
+        final message =
+            metadata['message'] as String? ?? 'Authentication failed';
+        throw _isAuthError(code, message)
+            ? AuthenticationException(message)
+            : DatabaseException(message, code);
       } else {
         throw ProtocolException(
           'Unexpected response to HELLO: ${helloResponse.runtimeType}',
@@ -181,7 +185,8 @@ class BoltConnection {
       if (helloResponse is BoltFailureMessage) {
         _serverState = BoltServerState.failed;
         final metadata =
-            helloResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+            helloResponse.metadata.dartValue as Map<String, dynamic>? ??
+            const {};
         final code = metadata['code'] as String? ?? 'unknown';
         final message = metadata['message'] as String? ?? 'HELLO failed';
         throw DatabaseException(message, code);
@@ -203,20 +208,25 @@ class BoltConnection {
     } else if (logonResponse is BoltFailureMessage) {
       _serverState = BoltServerState.failed;
       final metadata =
-          logonResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+          logonResponse.metadata.dartValue as Map<String, dynamic>? ?? const {};
       final code = metadata['code'] as String? ?? 'unknown';
       final message = metadata['message'] as String? ?? 'Authentication failed';
-
-      if (code.startsWith('Neo.ClientError.Security.Unauthorized')) {
-        throw AuthenticationException(message);
-      } else {
-        throw DatabaseException(message, code);
-      }
+      throw _isAuthError(code, message)
+          ? AuthenticationException(message)
+          : DatabaseException(message, code);
     } else {
       throw ProtocolException(
         'Unexpected response to LOGON: ${logonResponse.runtimeType}',
       );
     }
+  }
+
+  static bool _isAuthError(String code, String message) {
+    code = code.toLowerCase();
+    if (code.startsWith('neo.clienterror.security.unauthorized')) return true;
+    message = message.toLowerCase();
+    return message.contains('unauthorized') ||
+        message.contains('authentication failure');
   }
 
   /// Creates a LOGON message based on the authentication token type.
@@ -256,9 +266,9 @@ class BoltConnection {
 
     try {
       final beginMessage = BoltMessageFactory.begin(
-        bookmarks: bookmarks ?? [],
+        bookmarks: bookmarks ?? const [],
         txTimeout: txTimeout,
-        txMetadata: txMetadata ?? {},
+        txMetadata: txMetadata ?? const {},
         mode: mode,
         db: db,
       );
@@ -272,7 +282,8 @@ class BoltConnection {
         // BEGIN failed - server transitions to FAILED state
         _serverState = BoltServerState.failed;
         final metadata =
-            beginResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+            beginResponse.metadata.dartValue as Map<String, dynamic>? ??
+            const {};
         final code = metadata['code'] as String? ?? 'unknown';
         final message =
             metadata['message'] as String? ?? 'Transaction begin failed';
@@ -306,7 +317,8 @@ class BoltConnection {
         // COMMIT failed - server transitions to FAILED state
         _serverState = BoltServerState.failed;
         final metadata =
-            commitResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+            commitResponse.metadata.dartValue as Map<String, dynamic>? ??
+            const {};
         final code = metadata['code'] as String? ?? 'unknown';
         final message =
             metadata['message'] as String? ?? 'Transaction commit failed';
@@ -340,7 +352,8 @@ class BoltConnection {
         // ROLLBACK failed - server transitions to FAILED state
         _serverState = BoltServerState.failed;
         final metadata =
-            rollbackResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+            rollbackResponse.metadata.dartValue as Map<String, dynamic>? ??
+            const {};
         final code = metadata['code'] as String? ?? 'unknown';
         final message =
             metadata['message'] as String? ?? 'Transaction rollback failed';
@@ -402,14 +415,15 @@ class BoltConnection {
           _serverState = BoltServerState.streaming;
         }
         final metadata =
-            runResponse.metadata?.dartValue as Map<String, dynamic>? ?? {};
-        final fieldsData = metadata['fields'] as List<dynamic>? ?? [];
+            runResponse.metadata?.dartValue as Map<String, dynamic>? ??
+            const {};
+        final fieldsData = metadata['fields'] as List<dynamic>? ?? const [];
         keys = fieldsData.cast<String>();
       } else if (runResponse is BoltFailureMessage) {
         // RUN failed - server transitions to FAILED state
         _serverState = BoltServerState.failed;
         final metadata =
-            runResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+            runResponse.metadata.dartValue as Map<String, dynamic>? ?? const {};
         final code = metadata['code'] as String? ?? 'unknown';
         final message =
             metadata['message'] as String? ?? 'Query execution failed';
@@ -447,7 +461,8 @@ class BoltConnection {
             // PULL failed - server transitions to FAILED state
             _serverState = BoltServerState.failed;
             final metadata =
-                pullResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+                pullResponse.metadata.dartValue as Map<String, dynamic>? ??
+                const {};
             final code = metadata['code'] as String? ?? 'unknown';
             final message =
                 metadata['message'] as String? ?? 'Result fetch failed';
@@ -639,7 +654,8 @@ class BoltConnection {
         // RESET failed - connection is likely defunct
         _serverState = BoltServerState.defunct;
         final metadata =
-            resetResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+            resetResponse.metadata.dartValue as Map<String, dynamic>? ??
+            const {};
         final code = metadata['code'] as String? ?? 'unknown';
         final message = metadata['message'] as String? ?? 'Reset failed';
         throw ConnectionException(
@@ -662,7 +678,8 @@ class BoltConnection {
     String query,
     Map<String, dynamic> parameters,
   ) {
-    final metadata = message.metadata?.dartValue as Map<String, dynamic>? ?? {};
+    final metadata =
+        message.metadata?.dartValue as Map<String, dynamic>? ?? const {};
     return ResultSummary.fromMetadata(query, parameters, metadata);
   }
 
