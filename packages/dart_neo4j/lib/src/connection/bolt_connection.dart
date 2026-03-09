@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dart_bolt/dart_bolt.dart';
+import 'package:dart_neo4j/dart_neo4j_version.dart';
 import 'package:dart_neo4j/src/auth/auth_token.dart';
 import 'package:dart_neo4j/src/auth/basic_auth.dart';
 import 'package:dart_neo4j/src/driver/uri_parser.dart';
@@ -64,7 +65,7 @@ class BoltConnection {
   /// Establishes and initializes the Bolt connection.
   ///
   /// This performs the full Bolt handshake and authentication.
-  Future<void> connect() async {
+  Future<void> connect([List<BoltVersion>? forcedVersions]) async {
     if (_serverState != BoltServerState.disconnected &&
         _serverState != BoltServerState.defunct) {
       throw ConnectionException(
@@ -82,7 +83,7 @@ class BoltConnection {
       await _socket.connect();
 
       // Perform Bolt handshake (before setting up message processing)
-      await _protocol.performHandshake();
+      await _protocol.performHandshake(forcedVersions);
 
       // Set up data processing for chunked messages
       _dataSubscription = _socket.dataStream.listen(
@@ -102,34 +103,93 @@ class BoltConnection {
     }
   }
 
+  Future<void> _authenticate() {
+    final version = BoltVersion.raw(protocolVersion!);
+    return (version < BoltVersion.v5_1)
+        ? _authenticateWithoutLogon()
+        : _authenticateWithLogon();
+  }
+
+  /// Authenticates with the Neo4j server using HELLO flow.
+  Future<void> _authenticateWithoutLogon() async {
+    // Step 1: Send HELLO message (with authentication for older protocols)
+    _serverState = BoltServerState.authentication;
+
+    final helloMessage = switch (_auth) {
+      BasicAuth auth => BoltMessageFactory.helloWithAuth(
+        userAgent: 'dart_neo4j/$version',
+        username: auth.username,
+        password: auth.password,
+        boltAgent: {
+          'product': 'dart_neo4j/$version',
+          'platform': 'Dart',
+          'language': 'Dart',
+        },
+      ),
+      NoAuth() => BoltMessageFactory.hello(
+        userAgent: 'dart_neo4j/$version',
+        boltAgent: {
+          'product': 'dart_neo4j/$version',
+          'platform': 'Dart',
+          'language': 'Dart',
+        },
+      ),
+      _ => throw ProtocolException(
+        'Unsupported AuthToken ${_auth.runtimeType}',
+      ),
+    };
+
+    final helloResponse = await _sendMessage(helloMessage);
+
+    if (helloResponse is! BoltSuccessMessage) {
+      if (helloResponse is BoltFailureMessage) {
+        _serverState = BoltServerState.failed;
+        final metadata =
+            helloResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+        final code = metadata['code'] as String? ?? 'unknown';
+        final message = metadata['message'] as String? ?? 'HELLO failed';
+        throw DatabaseException(message, code);
+      } else {
+        throw ProtocolException(
+          'Unexpected response to HELLO: ${helloResponse.runtimeType}',
+        );
+      }
+    }
+
+    // Authentication successful - server is now in READY state
+    _serverState = BoltServerState.ready;
+    return;
+  }
+
   /// Authenticates with the Neo4j server using HELLO/LOGON flow.
-  Future<void> _authenticate() async {
+  Future<void> _authenticateWithLogon() async {
     // Step 1: Send HELLO message (without authentication for newer protocols)
     _serverState = BoltServerState.authentication;
 
-    // see https://neo4j.com/docs/bolt/current/bolt/server-state/#_version_5_1
-    final includeAuth = (_protocol.agreedVersion! < 0x00000501);
+    final helloMessage = BoltMessageFactory.hello(
+      userAgent: 'dart_neo4j/$version',
+      boltAgent: {
+        'product': 'dart_neo4j/$version',
+        'platform': 'Dart',
+        'language': 'Dart',
+      },
+    );
 
-    final helloMessage = _createHelloMessage(includeAuth ? _auth : null);
     final helloResponse = await _sendMessage(helloMessage);
 
-    if (helloResponse is BoltSuccessMessage) {
-      if (includeAuth) {
-        // Authentication successful - server is now in READY state
-        _serverState = BoltServerState.ready;
-        return;
+    if (helloResponse is! BoltSuccessMessage) {
+      if (helloResponse is BoltFailureMessage) {
+        _serverState = BoltServerState.failed;
+        final metadata =
+            helloResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
+        final code = metadata['code'] as String? ?? 'unknown';
+        final message = metadata['message'] as String? ?? 'HELLO failed';
+        throw DatabaseException(message, code);
+      } else {
+        throw ProtocolException(
+          'Unexpected response to HELLO: ${helloResponse.runtimeType}',
+        );
       }
-    } else if (helloResponse is BoltFailureMessage) {
-      _serverState = BoltServerState.failed;
-      final metadata =
-          helloResponse.metadata.dartValue as Map<String, dynamic>? ?? {};
-      final code = metadata['code'] as String? ?? 'unknown';
-      final message = metadata['message'] as String? ?? 'HELLO failed';
-      throw DatabaseException(message, code);
-    } else {
-      throw ProtocolException(
-        'Unexpected response to HELLO: ${helloResponse.runtimeType}',
-      );
     }
 
     // Step 2: Send LOGON message with authentication details
@@ -155,35 +215,6 @@ class BoltConnection {
     } else {
       throw ProtocolException(
         'Unexpected response to LOGON: ${logonResponse.runtimeType}',
-      );
-    }
-  }
-
-  /// Creates a HELLO message based on the agreedVersion.
-  BoltHelloMessage _createHelloMessage(AuthToken? auth) {
-    if (auth == null || auth is NoAuth) {
-      return BoltMessageFactory.hello(
-        userAgent: 'dart_neo4j/1.0.0',
-        boltAgent: {
-          'product': 'dart_neo4j/1.0.0',
-          'platform': 'Dart',
-          'language': 'Dart',
-        },
-      );
-    } else if (auth is BasicAuth) {
-      return BoltMessageFactory.helloWithAuth(
-        userAgent: 'dart_neo4j/1.0.0',
-        boltAgent: {
-          'product': 'dart_neo4j/1.0.0',
-          'platform': 'Dart',
-          'language': 'Dart',
-        },
-        username: auth.username,
-        password: auth.password,
-      );
-    } else {
-      throw ClientException(
-        'Only Basic authentication is supported with legacy protocols (< 5.1)',
       );
     }
   }
@@ -652,7 +683,8 @@ class BoltConnection {
   }
 
   @override
-  String toString() {
-    return 'BoltConnection{uri: ${_uri.host}:${_uri.port}, serverState: $_serverState, version: $protocolVersion}';
-  }
+  String toString() =>
+      'BoltConnection{uri: ${_uri.host}:${_uri.port},'
+      ' serverState: $_serverState,'
+      ' version: ${protocolVersion?.toRadixString(16)}}';
 }
