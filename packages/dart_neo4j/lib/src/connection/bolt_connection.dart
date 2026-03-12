@@ -226,7 +226,7 @@ class BoltConnection {
     if (code.startsWith('neo.clienterror.security.unauthorized')) return true;
     message = message.toLowerCase();
     return message.contains('unauthorized') ||
-        message.contains('authentication failure');
+        message.contains('authentication fail');
   }
 
   /// Creates a LOGON message based on the authentication token type.
